@@ -24,32 +24,74 @@ void create_main_cpp(const std::string& project_name, const fs::path& path) {
     main_cpp << "}\n";
 }
 
+void build_project(const std::string& project_name, const fs::path& path) {
+    fs::path build_path = path / "build";
+
+    if (!fs::exists(build_path)) {
+        fs::create_directory(build_path);
+    }
+
+    std::string command = "cd " + build_path.string() + " && cmake .. && make";
+    int result = std::system(command.c_str());
+
+    if (result != 0) {
+        std::cerr << "Build failed!" << std::endl;
+    }
+    else {
+        std::cout << "Build successful! Run ./" << project_name << " from the build directory." << std::endl;
+    }
+}
+
 int main(int argc, char** argv) {
-    CLI::App app{ "C++ Project Initializer (cppinit) - Quickly bootstrap CMake C++ projects" };
-
-    std::string project_name;
-    app.add_option("name", project_name, "Project name")->required();
-
-    CLI11_PARSE(app, argc, argv);
-
-    fs::path project_path = fs::current_path() / project_name;
-
-    if (fs::exists(project_path)) {
-        std::cerr << "Error: Directory '" << project_name << "' already exists.\n";
+    if (argc < 2) {
+        std::cerr << "Usage: rizzpack <command> [options]\n";
         return 1;
     }
 
-    fs::create_directory(project_path);
+    std::string command = argv[1];
 
-    create_cmakelists(project_name, project_path);
-    create_main_cpp(project_name, project_path);
+    std::string project_name;
+    if (argc > 2) {
+        project_name = argv[2];
+    }
 
-    std::cout << "Initialized C++ project '" << project_name << "' at " << project_path << std::endl;
-    std::cout << "You can now run:\n";
-    std::cout << "  cd " << project_name << "\n";
-    std::cout << "  mkdir build && cd build\n";
-    std::cout << "  cmake .. && make\n";
-    std::cout << "  ./" << project_name << "\n";
+    fs::path project_path = fs::current_path() / project_name;
+
+    if (command == "init") {
+        if (project_name.empty()) {
+            std::cerr << "Error: Please provide a project name for initialization.\n";
+            return 1;
+        }
+
+        if (fs::exists(project_path)) {
+            std::cerr << "Error: Directory '" << project_name << "' already exists.\n";
+            return 1;
+        }
+
+        fs::create_directory(project_path);
+        create_cmakelists(project_name, project_path);
+        create_main_cpp(project_name, project_path);
+
+        std::cout << "Initialized C++ project '" << project_name << "' at " << project_path << std::endl;
+    }
+    else if (command == "build") {
+        if (project_name.empty()) {
+            std::cerr << "Error: Please provide a project name to build.\n";
+            return 1;
+        }
+
+        if (!fs::exists(project_path)) {
+            std::cerr << "Error: Project directory '" << project_name << "' not found.\n";
+            return 1;
+        }
+
+        build_project(project_name, project_path);
+    }
+    else {
+        std::cerr << "Error: Unknown command '" << command << "'.\n";
+        std::cerr << "Available commands: init, build\n";
+        return 1;
+    }
 
     return 0;
 }
